@@ -23,8 +23,8 @@ def test_cli_verify(capsys):
         main()
     captured = capsys.readouterr()
     assert "SCHEMA INTEGRITY VERIFICATION: PASS" in captured.out
-    assert "Tables Found (8)" in captured.out
-    assert "Views Found (4)" in captured.out
+    assert "Tables Found (12)" in captured.out
+    assert "Views Found (6)" in captured.out
 
 
 def test_cli_info(capsys):

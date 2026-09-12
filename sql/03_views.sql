@@ -83,3 +83,51 @@ SELECT
 FROM students s
 WHERE s.cumulative_gpa >= 3.50
   AND s.status = 'active';
+
+-- -------------------------------------------------------------
+-- 5. View: Course Prerequisites Catalog
+-- -------------------------------------------------------------
+CREATE OR REPLACE VIEW vw_course_prerequisites AS
+SELECT
+    c.course_id,
+    c.course_code,
+    c.title AS course_title,
+    req_c.course_id AS prerequisite_course_id,
+    req_c.course_code AS prerequisite_code,
+    req_c.title AS prerequisite_title,
+    cp.min_grade_letter,
+    cp.min_grade_points
+FROM course_prerequisites cp
+JOIN courses c ON cp.course_id = c.course_id
+JOIN courses req_c ON cp.prerequisite_course_id = req_c.course_id;
+
+-- -------------------------------------------------------------
+-- 6. View: Student Degree Audit Progress
+-- -------------------------------------------------------------
+CREATE OR REPLACE VIEW vw_degree_progress AS
+SELECT
+    sd.declaration_id,
+    s.student_id,
+    s.student_number,
+    CONCAT(s.first_name, ' ', s.last_name) AS student_name,
+    dp.degree_id,
+    dp.degree_code,
+    dp.title AS degree_title,
+    dp.total_credits_required,
+    COALESCE(SUM(CASE WHEN e.status = 'completed' AND e.grade_points >= 1.0 THEN c.credits ELSE 0 END), 0) AS completed_credits,
+    ROUND((COALESCE(SUM(CASE WHEN e.status = 'completed' AND e.grade_points >= 1.0 THEN c.credits ELSE 0 END), 0) * 100.0) / dp.total_credits_required, 1) AS credit_completion_pct,
+    s.cumulative_gpa,
+    dp.min_gpa_required,
+    CASE
+        WHEN COALESCE(SUM(CASE WHEN e.status = 'completed' AND e.grade_points >= 1.0 THEN c.credits ELSE 0 END), 0) >= dp.total_credits_required
+         AND s.cumulative_gpa >= dp.min_gpa_required THEN 'ELIGIBLE'
+        ELSE 'PENDING'
+    END AS graduation_status
+FROM student_degrees sd
+JOIN students s ON sd.student_id = s.student_id
+JOIN degree_programs dp ON sd.degree_id = dp.degree_id
+LEFT JOIN enrollments e ON s.student_id = e.student_id
+LEFT JOIN course_sections cs ON e.section_id = cs.section_id
+LEFT JOIN courses c ON cs.course_id = c.course_id
+GROUP BY sd.declaration_id, s.student_id, s.student_number, s.first_name, s.last_name, dp.degree_id, dp.degree_code, dp.title, dp.total_credits_required, s.cumulative_gpa, dp.min_gpa_required;
+

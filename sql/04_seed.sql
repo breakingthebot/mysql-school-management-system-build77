@@ -102,3 +102,40 @@ INSERT INTO enrollments (enrollment_id, section_id, student_id, enrollment_date,
 (18, 6, 9, '2026-08-29', 'completed', 62.00, 'D',  1.00),
 (19, 7, 8, '2026-08-28', 'completed', 95.00, 'A',  4.00),
 (20, 8, 10,'2026-08-28', 'completed', 91.00, 'A-', 3.70);
+
+-- -------------------------------------------------------------
+-- 8. Populate Course Prerequisites
+-- -------------------------------------------------------------
+INSERT INTO course_prerequisites (prerequisite_id, course_id, prerequisite_course_id, min_grade_letter, min_grade_points) VALUES
+(1, 2, 1, 'C', 2.00),  -- CS-201 requires CS-101
+(2, 3, 2, 'C', 2.00),  -- CS-301 requires CS-201
+(3, 5, 4, 'C', 2.00);  -- MATH-220 requires MATH-150
+
+-- -------------------------------------------------------------
+-- 9. Populate Degree Programs
+-- -------------------------------------------------------------
+INSERT INTO degree_programs (degree_id, degree_code, title, department_id, total_credits_required, min_gpa_required) VALUES
+(1, 'BS-CS',   'Bachelor of Science in Computer Science', 1, 120, 2.00),
+(2, 'BS-MATH', 'Bachelor of Science in Mathematics',      2, 120, 2.00);
+
+-- -------------------------------------------------------------
+-- 10. Populate Degree Requirements
+-- -------------------------------------------------------------
+INSERT INTO degree_requirements (requirement_id, degree_id, course_id, is_mandatory) VALUES
+(1, 1, 1, TRUE),  -- BS-CS requires CS-101
+(2, 1, 2, TRUE),  -- BS-CS requires CS-201
+(3, 1, 3, TRUE),  -- BS-CS requires CS-301
+(4, 1, 4, TRUE),  -- BS-CS requires MATH-150
+(5, 1, 5, TRUE),  -- BS-CS requires MATH-220
+(6, 2, 4, TRUE),  -- BS-MATH requires MATH-150
+(7, 2, 5, TRUE),  -- BS-MATH requires MATH-220
+(8, 2, 1, TRUE);  -- BS-MATH requires CS-101
+
+-- -------------------------------------------------------------
+-- 11. Populate Student Degree Declarations
+-- -------------------------------------------------------------
+INSERT INTO student_degrees (declaration_id, student_id, degree_id, declaration_date, status) VALUES
+(1, 1, 1, '2022-09-01', 'declared'),     -- Maya Lin: BS-CS
+(2, 2, 2, '2021-09-01', 'declared'),     -- Devon Miller: BS-MATH
+(3, 3, 1, '2022-09-01', 'declared');     -- Elena Rostova: BS-CS
+

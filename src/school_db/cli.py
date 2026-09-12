@@ -65,6 +65,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_grade.add_argument("--enrollment", type=int, required=True, help="Enrollment ID")
     p_grade.add_argument("--score", type=float, required=True, help="Numerical score (0-100)")
 
+    # prerequisites
+    p_prereq = subparsers.add_parser("prerequisites", help="Display course prerequisites catalog")
+    p_prereq.add_argument("--course", default=None, help="Filter by course code (e.g. CS-201)")
+
+    # degree-audit
+    p_audit = subparsers.add_parser("degree-audit", help="Run degree completion and graduation audit for a student")
+    p_audit.add_argument("--student", type=int, required=True, help="Student ID")
+    p_audit.add_argument("--degree", type=int, default=None, help="Degree Program ID (optional)")
+
     # export-sql
     p_export = subparsers.add_parser("export-sql", help="Export consolidated SQL deployment script")
     p_export.add_argument("--output", default="school_management_full.sql", help="Target output file path")
@@ -178,6 +187,41 @@ def main():
             print(f"  - Student GPA:   {result['cumulative_gpa']}")
         except ValueError as e:
             print(f"Grading Error: {e}")
+            sys.exit(1)
+
+    elif args.command == "prerequisites":
+        catalog = service.get_course_prerequisites(args.course)
+        print("==================================================")
+        print("           COURSE PREREQUISITES CATALOG           ")
+        print("==================================================")
+        if not catalog:
+            print("No prerequisite requirements found.")
+        for item in catalog:
+            print(f"[{item['course_code']}] {item['course_title']}")
+            print(f"     Requires: [{item['prerequisite_code']}] {item['prerequisite_title']} (Min Grade: {item['min_grade_letter']})")
+        print("==================================================")
+
+    elif args.command == "degree-audit":
+        try:
+            audit = service.audit_degree(args.student, args.degree)
+            print("==================================================")
+            print(f"DEGREE COMPLETION AUDIT: {audit['student_name']} ({audit['student_number']})")
+            print(f"Degree Program: {audit['degree_title']} ({audit['degree_code']})")
+            print("==================================================")
+            print(f"Credits Completed: {audit['completed_credits']} / {audit['total_credits_required']} ({audit['progress_pct']}%)")
+            print(f"Cumulative GPA:    {audit['cumulative_gpa']} (Minimum Required: {audit['min_gpa_required']})")
+            print(f"Graduation Status: {audit['graduation_status']}")
+            print("--------------------------------------------------")
+            print(f"Satisfied Requirements ({len(audit['satisfied_courses'])}):")
+            for c in audit["satisfied_courses"]:
+                print(f"  [x] [{c['course_code']}] {c['title']} ({c['credits']} cr) - Grade: {c['grade_letter']}")
+            if audit["missing_mandatory_courses"]:
+                print(f"Pending Mandatory Requirements ({len(audit['missing_mandatory_courses'])}):")
+                for c in audit["missing_mandatory_courses"]:
+                    print(f"  [ ] [{c['course_code']}] {c['title']} ({c['credits']} cr)")
+            print("==================================================")
+        except ValueError as e:
+            print(f"Degree Audit Error: {e}")
             sys.exit(1)
 
     elif args.command == "export-sql":

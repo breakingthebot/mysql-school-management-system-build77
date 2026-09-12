@@ -19,10 +19,17 @@ This system models a university academic operations platform built on MySQL 8.0+
 erDiagram
     DEPARTMENTS ||--o{ PROFESSORS : employs
     DEPARTMENTS ||--o{ COURSES : offers
+    DEPARTMENTS ||--o{ DEGREE_PROGRAMS : administers
+    DEGREE_PROGRAMS ||--o{ DEGREE_REQUIREMENTS : specifies
+    DEGREE_PROGRAMS ||--o{ STUDENT_DEGREES : declares
+    COURSES ||--o{ DEGREE_REQUIREMENTS : satisfies
+    COURSES ||--o{ COURSE_PREREQUISITES : defines
+    COURSES ||--o{ COURSE_PREREQUISITES : requires
     PROFESSORS ||--o{ COURSE_SECTIONS : instructs
     COURSES ||--o{ COURSE_SECTIONS : schedules
     COURSE_SECTIONS ||--o{ ENROLLMENTS : registers
     STUDENTS ||--o{ ENROLLMENTS : undertakes
+    STUDENTS ||--o{ STUDENT_DEGREES : enrolled_in
     GRADE_SCALE ||--o{ ENROLLMENTS : classifies
     ENROLLMENTS ||--o{ ACADEMIC_AUDIT_LOG : audits
 
@@ -104,6 +111,38 @@ erDiagram
         string new_value
         timestamp created_at
     }
+
+    COURSE_PREREQUISITES {
+        int prerequisite_id PK
+        int course_id FK
+        int prerequisite_course_id FK
+        string min_grade_letter
+        decimal min_grade_points
+    }
+
+    DEGREE_PROGRAMS {
+        int degree_id PK
+        string degree_code UK
+        string title
+        int department_id FK
+        int total_credits_required
+        decimal min_gpa_required
+    }
+
+    DEGREE_REQUIREMENTS {
+        int requirement_id PK
+        int degree_id FK
+        int course_id FK
+        boolean is_mandatory
+    }
+
+    STUDENT_DEGREES {
+        int declaration_id PK
+        int student_id FK
+        int degree_id FK
+        date declaration_date
+        string status
+    }
 ```
 
 ---
@@ -111,25 +150,35 @@ erDiagram
 ## Core Schema & Business Logic Features
 
 1. **Normalized Relational Model (3NF)**:
-   - Eliminates data redundancy across 8 interconnected relational tables.
+   - Eliminates data redundancy across 12 interconnected relational tables.
    - Enforces referential integrity with strict foreign key constraints, `ON UPDATE CASCADE`, and conditional `ON DELETE` rules.
 
-2. **Automated Triggers (`sql/02_procedures_triggers.sql`)**:
+2. **Course Prerequisite Enforcement (Directed Acyclic Graph)**:
+   - `course_prerequisites`: Models foundational course requirements with minimum acceptable letter grade and grade point thresholds.
+   - Dynamic validation prevents students from registering for advanced coursework without satisfactory completion of prerequisites.
+
+3. **Degree Programs & Completion Audit Engine**:
+   - `degree_programs`, `degree_requirements`, and `student_degrees` model degree requirements, mandatory courses, and declared degree tracks.
+   - Real-time graduation auditing evaluates completed credits against total requirements, GPA thresholds, and outstanding mandatory courses.
+
+4. **Automated Triggers (`sql/02_procedures_triggers.sql`)**:
    - `trg_check_section_capacity`: Before insert trigger on `enrollments` preventing enrollment if the section's enrolled count equals or exceeds course capacity.
    - `trg_increment_enrolled_count`: After insert trigger automatically incrementing `enrolled_count` on `course_sections`.
    - `trg_decrement_enrolled_count`: After delete trigger automatically decrementing `enrolled_count`.
    - `trg_audit_grade_change`: After update trigger recording historical grade transitions in `academic_audit_log`.
 
-3. **Transactional Stored Procedures**:
-   - `sp_enroll_student`: Verifies student status (must be `active`), checks capacity constraints, prevents duplicate registrations, and executes enrollment atomically.
+5. **Transactional Stored Procedures & Operations**:
+   - `sp_enroll_student`: Verifies student status (must be `active`), validates prerequisite completion, checks capacity constraints, and prevents duplicate registrations.
    - `sp_calculate_student_gpa`: Calculates credit-weighted cumulative GPA and updates `students.cumulative_gpa`.
    - `sp_assign_grade`: Maps numerical exam scores to letter grades via `grade_scale` and triggers automatic GPA updates.
 
-4. **Analytical SQL Views (`sql/03_views.sql`)**:
+6. **Analytical SQL Views (`sql/03_views.sql`)**:
    - `vw_course_enrollment_stats`: Live capacity utilization percentages and section status (`OPEN`, `NEAR CAPACITY`, `FULL`).
    - `vw_student_transcript`: Denormalized transcript views including course credits, terms, and letter grades.
    - `vw_department_performance`: Aggregated department metrics tracking student enrollment counts and average GPA.
    - `vw_honor_roll`: Filtered reporting of active students with cumulative GPA ≥ 3.50.
+   - `vw_course_prerequisites`: Catalog of prerequisite relationships and grade thresholds.
+   - `vw_degree_progress`: Student degree progress percentages and graduation eligibility.
 
 ---
 
@@ -218,7 +267,13 @@ mysql-school --in-memory transcript --student 1
 # List students on the Honor Roll (GPA >= 3.50)
 mysql-school --in-memory honor-roll
 
-# Enroll a student in a course section
+# View course prerequisites catalog
+mysql-school --in-memory prerequisites
+
+# Run degree completion audit for Student #1
+mysql-school --in-memory degree-audit --student 1
+
+# Enroll a student in a course section (enforces capacity & prerequisites)
 mysql-school --in-memory enroll --student 4 --section 2
 
 # Assign grade to an enrollment
@@ -238,7 +293,7 @@ Run the complete test suite using `pytest`:
 pytest -v
 ```
 
-All 19 tests run with zero external service dependencies in under 1 second.
+All 30 tests run with zero external service dependencies in under 0.6 seconds.
 
 ---
 
@@ -246,7 +301,8 @@ All 19 tests run with zero external service dependencies in under 1 second.
 
 | Iteration | Version | Summary | Tests |
 | :---: | :---: | :--- | :---: |
-| **01** | `v1.0.0` | **Core MySQL Relational Schema, Procedures, Triggers & CLI**: 8 normalized tables, capacity constraints, academic audit logging, analytical views, and `mysql-school` CLI suite. | 19 / 19 |
+| **01** | `v1.0.0` | **Core MySQL Relational Schema, Procedures, Triggers & CLI**: 8 normalized tables, capacity constraints, academic audit logging, analytical views, and `mysql-school` CLI suite. | 23 / 23 |
+| **02** | `v1.1.0` | **Course Prerequisite DAG & Degree Audit Engine**: 4 new tables, self-referential prerequisite enforcement, degree programs, requirements tracking, and `degree-audit` CLI command. | 30 / 30 |
 
 ---
 

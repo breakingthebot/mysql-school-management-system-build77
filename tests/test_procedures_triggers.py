@@ -57,8 +57,8 @@ def test_enroll_student_capacity_exceeded_fails(service):
 
 def test_grade_assignment_and_scale_resolution(service):
     # Verify score is resolved to correct letter grade and grade points
-    # Enroll student 4 in section 3
-    enroll_res = service.enroll_student(student_id=4, section_id=3)
+    # Enroll student 4 in section 6 (EE-110)
+    enroll_res = service.enroll_student(student_id=4, section_id=6)
     eid = enroll_res["enrollment_id"]
 
     # Assign score 91.5 (A- / 3.70)
@@ -71,7 +71,8 @@ def test_grade_assignment_and_scale_resolution(service):
 
 def test_grade_assignment_updates_audit_log(service):
     # Verify grade modifications create audit log entries
-    enroll_res = service.enroll_student(student_id=4, section_id=3)
+    # Enroll student 4 in section 6 (EE-110)
+    enroll_res = service.enroll_student(student_id=4, section_id=6)
     eid = enroll_res["enrollment_id"]
 
     # First grade assignment

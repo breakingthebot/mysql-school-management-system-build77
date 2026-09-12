@@ -34,7 +34,7 @@ def test_schema_migration_tables(db_and_schema):
     verification = schema.verify()
 
     assert verification["status"] == "PASS"
-    assert len(verification["tables_found"]) == 8
+    assert len(verification["tables_found"]) == 12
     assert len(verification["tables_missing"]) == 0
 
 
@@ -44,9 +44,9 @@ def test_schema_migration_views(db_and_schema):
     schema.migrate()
     verification = schema.verify()
 
-    assert len(verification["views_found"]) == 4
+    assert len(verification["views_found"]) == 6
     assert len(verification["views_missing"]) == 0
-    for v in ["vw_course_enrollment_stats", "vw_student_transcript", "vw_department_performance", "vw_honor_roll"]:
+    for v in ["vw_course_enrollment_stats", "vw_student_transcript", "vw_department_performance", "vw_honor_roll", "vw_course_prerequisites", "vw_degree_progress"]:
         assert v in verification["views_found"]
 
 
@@ -64,6 +64,10 @@ def test_table_row_counts_after_seed(db_and_schema):
     assert counts["course_sections"] == 8
     assert counts["grade_scale"] == 9
     assert counts["enrollments"] == 20
+    assert counts["course_prerequisites"] == 3
+    assert counts["degree_programs"] == 2
+    assert counts["degree_requirements"] == 8
+    assert counts["student_degrees"] == 3
 
 
 def test_export_sql(db_and_schema, tmp_path):

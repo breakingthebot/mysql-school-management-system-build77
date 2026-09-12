@@ -153,7 +153,96 @@ CREATE TABLE IF NOT EXISTS academic_audit_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -------------------------------------------------------------
--- 9. Optimization Indexes
+-- 9. Course Prerequisites Table (Self-referential DAG)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS course_prerequisites (
+    prerequisite_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_id INT NOT NULL,
+    prerequisite_course_id INT NOT NULL,
+    min_grade_letter VARCHAR(2) NOT NULL DEFAULT 'C',
+    min_grade_points DECIMAL(3, 2) NOT NULL DEFAULT 2.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_prereq_course
+        FOREIGN KEY (course_id)
+        REFERENCES courses (course_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_prereq_required_course
+        FOREIGN KEY (prerequisite_course_id)
+        REFERENCES courses (course_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT uq_course_prereq
+        UNIQUE (course_id, prerequisite_course_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -------------------------------------------------------------
+-- 10. Degree Programs Table
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS degree_programs (
+    degree_id INT AUTO_INCREMENT PRIMARY KEY,
+    degree_code VARCHAR(15) NOT NULL UNIQUE,
+    title VARCHAR(150) NOT NULL,
+    department_id INT NOT NULL,
+    total_credits_required INT NOT NULL DEFAULT 120,
+    min_gpa_required DECIMAL(3, 2) NOT NULL DEFAULT 2.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_degree_department
+        FOREIGN KEY (department_id)
+        REFERENCES departments (department_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -------------------------------------------------------------
+-- 11. Degree Requirements Table
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS degree_requirements (
+    requirement_id INT AUTO_INCREMENT PRIMARY KEY,
+    degree_id INT NOT NULL,
+    course_id INT NOT NULL,
+    is_mandatory BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_req_degree
+        FOREIGN KEY (degree_id)
+        REFERENCES degree_programs (degree_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_req_course
+        FOREIGN KEY (course_id)
+        REFERENCES courses (course_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT uq_degree_course_req
+        UNIQUE (degree_id, course_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -------------------------------------------------------------
+-- 12. Student Degree Declarations Table
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS student_degrees (
+    declaration_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    degree_id INT NOT NULL,
+    declaration_date DATE NOT NULL,
+    status ENUM('declared', 'in_progress', 'completed', 'withdrawn') NOT NULL DEFAULT 'declared',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_std_degree_student
+        FOREIGN KEY (student_id)
+        REFERENCES students (student_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_std_degree_program
+        FOREIGN KEY (degree_id)
+        REFERENCES degree_programs (degree_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT uq_student_degree
+        UNIQUE (student_id, degree_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -------------------------------------------------------------
+-- 13. Optimization Indexes
 -- -------------------------------------------------------------
 CREATE INDEX idx_student_status ON students (status);
 CREATE INDEX idx_student_gpa ON students (cumulative_gpa);
@@ -161,3 +250,8 @@ CREATE INDEX idx_course_dept ON courses (department_id);
 CREATE INDEX idx_section_term ON course_sections (term, academic_year);
 CREATE INDEX idx_enrollment_status ON enrollments (status);
 CREATE INDEX idx_audit_table_record ON academic_audit_log (table_name, record_id);
+CREATE INDEX idx_prereq_course ON course_prerequisites (course_id);
+CREATE INDEX idx_degree_dept ON degree_programs (department_id);
+CREATE INDEX idx_req_degree ON degree_requirements (degree_id);
+CREATE INDEX idx_std_degree ON student_degrees (student_id, status);
+

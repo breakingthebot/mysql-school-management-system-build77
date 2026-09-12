@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-12
+
+### Added
+- **Prerequisite Enforcement DAG & Degree Audit Tables** (`sql/01_schema.sql`):
+  - `course_prerequisites`: Self-referential graph modeling course dependencies and minimum grade thresholds.
+  - `degree_programs`: Degree definitions with department mappings, total credits required, and GPA benchmarks.
+  - `degree_requirements`: Course requirements per degree with mandatory flag.
+  - `student_degrees`: Student degree declarations and academic status tracking.
+- **Prerequisite & Degree Reporting Views** (`sql/03_views.sql`):
+  - `vw_course_prerequisites`: Formatted course prerequisite relationship directory.
+  - `vw_degree_progress`: Student degree audit completion percentages and graduation eligibility indicators.
+- **Academic Service & CLI Features** (`src/school_db/service.py`, `src/school_db/cli.py`):
+  - Added prerequisite validation logic inside `enroll_student` blocking enrollment if prerequisite courses are unsatisfied.
+  - Added `check_prerequisites` and `audit_degree` methods.
+  - Added CLI subcommands `prerequisites` and `degree-audit`.
+- **Testing & Verification** (`tests/test_prerequisites_degree.py`):
+  - Added 7 unit and integration tests covering prerequisite blocking, passing eligibility, grade thresholds, and degree audit CLI. Total test count expanded to 30 tests.
+
 ## [1.0.0] - 2026-09-12
 
 ### Added
