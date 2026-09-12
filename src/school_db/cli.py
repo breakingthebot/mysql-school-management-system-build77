@@ -74,6 +74,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_audit.add_argument("--student", type=int, required=True, help="Student ID")
     p_audit.add_argument("--degree", type=int, default=None, help="Degree Program ID (optional)")
 
+
+    # rooms
+    subparsers.add_parser("rooms", help="Display classroom inventory, capacity, and scheduling utilization")
+
+    # workload
+    subparsers.add_parser("workload", help="Display faculty teaching workload, sections, and assigned hours")
+
+    # timetable
+    p_tt = subparsers.add_parser("timetable", help="Display master schedule timetable across classrooms")
+    p_tt.add_argument("--term", default=None, help="Filter timetable by academic term (e.g. Fall 2026)")
+    p_tt.add_argument("--year", type=int, default=None, help="Filter timetable by academic year (e.g. 2026)")
+
+    # schedule
+    p_sched = subparsers.add_parser("schedule", help="Assign a course section to a classroom and time block")
+    p_sched.add_argument("--section", type=int, required=True, help="Course Section ID")
+    p_sched.add_argument("--room", type=int, required=True, help="Classroom ID")
+    p_sched.add_argument("--day", required=True, choices=["MON", "TUE", "WED", "THU", "FRI", "SAT"], help="Day of week (MON, TUE, WED, THU, FRI, SAT)")
+    p_sched.add_argument("--start", required=True, help="Start time in HH:MM:SS or HH:MM format")
+    p_sched.add_argument("--end", required=True, help="End time in HH:MM:SS or HH:MM format")
+
     # export-sql
     p_export = subparsers.add_parser("export-sql", help="Export consolidated SQL deployment script")
     p_export.add_argument("--output", default="school_management_full.sql", help="Target output file path")
@@ -222,6 +242,59 @@ def main():
             print("==================================================")
         except ValueError as e:
             print(f"Degree Audit Error: {e}")
+            sys.exit(1)
+
+    elif args.command == "rooms":
+        rooms = service.get_classroom_utilization()
+        print("==================================================")
+        print("          CLASSROOM CAPACITY & UTILIZATION        ")
+        print("==================================================")
+        for r in rooms:
+            print(f"[{r['classroom_code']}] {r['building']} Rm {r['room_number']} ({r['room_type']})")
+            print(f"     Capacity: {r['room_capacity']} | Active Sections: {r['scheduled_sections']} | Enrolled Students: {r['total_students_seated']} | Weekly Hours: {r['total_weekly_hours']:.1f}")
+        print("==================================================")
+
+    elif args.command == "workload":
+        workloads = service.get_faculty_workload()
+        print("==================================================")
+        print("            FACULTY TEACHING WORKLOAD             ")
+        print("==================================================")
+        for w in workloads:
+            status_tag = f"[{w['workload_status']}]"
+            print(f"[{w['employee_number']}] {w['professor_name']} ({w['department_code']}) - {status_tag}")
+            print(f"     Title: {w['academic_rank']} | Sections: {w['sections_teaching']} | Total Credits: {w['total_teaching_credits']} | Total Students: {w['total_students_taught']} | Weekly Hours: {w['weekly_instruction_hours']:.1f}")
+        print("==================================================")
+
+    elif args.command == "timetable":
+        tt = service.get_master_timetable(term=args.term, year=args.year)
+        print("==================================================")
+        print("            MASTER CLASSROOM TIMETABLE            ")
+        print("==================================================")
+        if not tt:
+            print("No scheduled section blocks found matching criteria.")
+        for slot in tt:
+            print(f"[{slot['day_of_week']}] {slot['start_time']} - {slot['end_time']} | {slot['building']} Rm {slot['room_number']}")
+            print(f"     Course: [{slot['course_code']}] {slot['course_title']} (Sec #{slot['section_number']})")
+            print(f"     Professor: {slot['professor_name']} | Term: {slot['term']} {slot['academic_year']} | Enrolled: {slot['current_enrollment']}/{slot['course_capacity']} (Room Cap: {slot['room_capacity']})")
+        print("==================================================")
+
+    elif args.command == "schedule":
+        try:
+            res = service.schedule_section(
+                section_id=args.section,
+                classroom_id=args.room,
+                day_of_week=args.day,
+                start_time=args.start,
+                end_time=args.end,
+            )
+            print("Scheduling Assignment Succeeded:")
+            print(f"  - Schedule ID:   {res['schedule_id']}")
+            print(f"  - Section:       {res['section_number']} ({res['course_code']} - {res['course_title']})")
+            print(f"  - Classroom:     {res['classroom_code']} ({res['building']} Rm {res['room_number']})")
+            print(f"  - Time Block:    {res['day_of_week']} {res['start_time']} to {res['end_time']}")
+            print(f"  - Term/Year:     {res['term']} {res['academic_year']}")
+        except ValueError as e:
+            print(f"Scheduling Conflict Error: {e}")
             sys.exit(1)
 
     elif args.command == "export-sql":

@@ -22,6 +22,8 @@ class SchemaManager:
         "degree_programs",
         "degree_requirements",
         "student_degrees",
+        "classrooms",
+        "section_schedules",
     ]
 
     EXPECTED_VIEWS = [
@@ -31,6 +33,9 @@ class SchemaManager:
         "vw_honor_roll",
         "vw_course_prerequisites",
         "vw_degree_progress",
+        "vw_classroom_utilization",
+        "vw_faculty_workload",
+        "vw_master_timetable",
     ]
 
     def __init__(self, db: DatabaseManager, sql_dir: str = "sql"):

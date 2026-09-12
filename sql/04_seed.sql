@@ -139,3 +139,30 @@ INSERT INTO student_degrees (declaration_id, student_id, degree_id, declaration_
 (2, 2, 2, '2021-09-01', 'declared'),     -- Devon Miller: BS-MATH
 (3, 3, 1, '2022-09-01', 'declared');     -- Elena Rostova: BS-CS
 
+-- -------------------------------------------------------------
+-- 12. Populate Classrooms
+-- -------------------------------------------------------------
+INSERT INTO classrooms (room_id, building, room_number, seating_capacity, room_type) VALUES
+(1, 'Turing Hall',         'Turing-101', 35, 'lecture_hall'),
+(2, 'Turing Hall',         'Turing-202', 30, 'computer_lab'),
+(3, 'Euler Center',        'Euler-301',  40, 'lecture_hall'),
+(4, 'Franklin Laboratory', 'Franklin-10',25, 'laboratory'),
+(5, 'Shakespeare Hall',    'Shakes-12',  20, 'seminar_room'),
+(6, 'Smith Hall',          'Smith-40',   35, 'lecture_hall');
+
+-- -------------------------------------------------------------
+-- 13. Populate Section Schedules
+-- -------------------------------------------------------------
+INSERT INTO section_schedules (schedule_id, section_id, room_id, day_of_week, start_time, end_time) VALUES
+(1,  1, 1, 'MON', '09:00:00', '10:30:00'),
+(2,  1, 1, 'WED', '09:00:00', '10:30:00'),
+(3,  2, 2, 'TUE', '10:00:00', '11:30:00'),
+(4,  2, 2, 'THU', '10:00:00', '11:30:00'),
+(5,  3, 2, 'MON', '13:00:00', '14:30:00'),
+(6,  4, 3, 'MON', '10:00:00', '11:30:00'),
+(7,  4, 3, 'WED', '10:00:00', '11:30:00'),
+(8,  6, 4, 'FRI', '14:00:00', '17:00:00'),
+(9,  7, 5, 'TUE', '13:00:00', '14:30:00'),
+(10, 8, 6, 'THU', '13:00:00', '14:30:00');
+
+

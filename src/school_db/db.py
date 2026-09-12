@@ -56,9 +56,30 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.create_function("CONCAT", -1, lambda *args: "".join(str(a) for a in args if a is not None))
+        conn.create_function("SUBSTRING", 3, lambda s, start, length: s[start - 1 : start - 1 + length] if s else "")
         conn.create_function("CURDATE", 0, lambda: datetime.date.today().isoformat())
         conn.create_function("GREATEST", -1, lambda *args: max(args))
         conn.create_function("LEAST", -1, lambda *args: min(args))
+
+        def _time_to_sec(val):
+            if val is None:
+                return 0
+            if isinstance(val, (int, float)):
+                return int(val)
+            parts = str(val).split(":")
+            if len(parts) == 3:
+                return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(float(parts[2]))
+            elif len(parts) == 2:
+                return int(parts[0]) * 3600 + int(parts[1]) * 60
+            return 0
+
+        def _timediff(t1, t2):
+            if t1 is None or t2 is None:
+                return 0
+            return _time_to_sec(t1) - _time_to_sec(t2)
+
+        conn.create_function("TIME_TO_SEC", 1, _time_to_sec)
+        conn.create_function("TIMEDIFF", 2, _timediff)
         return conn
 
     def close(self):

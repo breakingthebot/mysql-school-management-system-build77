@@ -310,3 +310,161 @@ class AcademicService:
             "graduation_eligible": is_eligible,
             "graduation_status": "ELIGIBLE" if is_eligible else "PENDING"
         }
+
+    def schedule_section(
+        self,
+        section_id: int,
+        room_id: Optional[int] = None,
+        day_of_week: str = "MON",
+        start_time: str = "09:00:00",
+        end_time: str = "10:30:00",
+        classroom_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        # Assign time slot and classroom to course section enforcing conflict guards
+        if room_id is None and classroom_id is not None:
+            room_id = classroom_id
+        if room_id is None:
+            raise ValueError("Classroom ID must be specified.")
+
+        day = day_of_week.upper().strip()
+        valid_days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"]
+        if day not in valid_days:
+            raise ValueError(f"Invalid day of week '{day}'. Allowed: {', '.join(valid_days)}")
+
+        if start_time >= end_time:
+            raise ValueError(
+                f"End time must be after start time: start_time ({start_time}) >= end_time ({end_time})."
+            )
+
+        # 1. Fetch section and course metadata
+        sec = self.db.fetch_one(
+            """
+            SELECT cs.section_id, cs.course_id, cs.professor_id, cs.term, cs.academic_year, c.max_capacity, c.credits, c.course_code, c.title
+            FROM course_sections cs
+            JOIN courses c ON cs.course_id = c.course_id
+            WHERE cs.section_id = ?
+            """,
+            (section_id,)
+        )
+        if not sec:
+            raise ValueError(f"Course section with ID {section_id} not found.")
+
+        # 2. Fetch classroom metadata
+        room = self.db.fetch_one(
+            "SELECT room_id, building, room_number, seating_capacity FROM classrooms WHERE room_id = ?",
+            (room_id,)
+        )
+        if not room:
+            raise ValueError(f"Classroom with ID {room_id} not found.")
+
+        # 3. Check seating capacity vs course capacity
+        if room["seating_capacity"] < sec["max_capacity"]:
+            raise ValueError(
+                f"Room capacity ({room['seating_capacity']}) is smaller than section capacity ({sec['max_capacity']})."
+            )
+
+        # 4. Check classroom double-booking conflict
+        room_conflict = self.db.fetch_one(
+            """
+            SELECT ss.schedule_id, c.course_code, ss.start_time, ss.end_time
+            FROM section_schedules ss
+            JOIN course_sections cs ON ss.section_id = cs.section_id
+            JOIN courses c ON cs.course_id = c.course_id
+            WHERE ss.room_id = ?
+              AND ss.day_of_week = ?
+              AND cs.term = ?
+              AND cs.academic_year = ?
+              AND (ss.start_time < ? AND ss.end_time > ?)
+            """,
+            (room_id, day, sec["term"], sec["academic_year"], end_time, start_time)
+        )
+        if room_conflict:
+            raise ValueError(
+                f"Classroom double-booking conflict detected: Room {room['building']} {room['room_number']} is already booked by {room_conflict['course_code']} ({room_conflict['start_time']} - {room_conflict['end_time']})."
+            )
+
+        # 5. Check faculty time conflict
+        prof = self.db.fetch_one(
+            "SELECT first_name, last_name FROM professors WHERE professor_id = ?",
+            (sec["professor_id"],)
+        )
+        prof_name = f"Dr. {prof['first_name']} {prof['last_name']}" if prof else "Professor"
+
+        prof_conflict = self.db.fetch_one(
+            """
+            SELECT ss.schedule_id, c.course_code, ss.start_time, ss.end_time
+            FROM section_schedules ss
+            JOIN course_sections cs ON ss.section_id = cs.section_id
+            JOIN courses c ON cs.course_id = c.course_id
+            WHERE cs.professor_id = ?
+              AND ss.day_of_week = ?
+              AND cs.term = ?
+              AND cs.academic_year = ?
+              AND (ss.start_time < ? AND ss.end_time > ?)
+            """,
+            (sec["professor_id"], day, sec["term"], sec["academic_year"], end_time, start_time)
+        )
+        if prof_conflict:
+            raise ValueError(
+                f"Professor schedule overlap detected: Professor {prof_name} is already teaching {prof_conflict['course_code']} during this time interval ({prof_conflict['start_time']} - {prof_conflict['end_time']})."
+            )
+
+        # 6. Insert schedule record
+        self.db.execute(
+            """
+            INSERT INTO section_schedules (section_id, room_id, day_of_week, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (section_id, room_id, day, start_time, end_time)
+        )
+
+        sched = self.db.fetch_one(
+            """
+            SELECT schedule_id FROM section_schedules
+            WHERE section_id = ? AND room_id = ? AND day_of_week = ? AND start_time = ?
+            """,
+            (section_id, room_id, day, start_time)
+        )
+
+        return {
+            "status": "SUCCESS",
+            "schedule_id": sched["schedule_id"] if sched else None,
+            "section_id": section_id,
+            "section_number": sec["section_id"],
+            "classroom_code": room["room_number"],
+            "building": room["building"],
+            "room_number": room["room_number"],
+            "course_code": sec["course_code"],
+            "course_title": sec["title"],
+            "day_of_week": day,
+            "start_time": start_time,
+            "end_time": end_time,
+            "term": sec["term"],
+            "academic_year": sec["academic_year"],
+            "message": "Section scheduled successfully without conflicts."
+        }
+
+    def get_classroom_utilization(self) -> List[Dict[str, Any]]:
+        # Fetch classroom scheduling capacity and weekly booked hours
+        return self.db.fetch_all("SELECT * FROM vw_classroom_utilization ORDER BY building, room_number")
+
+    def get_faculty_workload(self) -> List[Dict[str, Any]]:
+        # Fetch faculty workload statistics and status indicators
+        return self.db.fetch_all("SELECT * FROM vw_faculty_workload ORDER BY total_teaching_credits DESC")
+
+    def get_master_timetable(self, term: Optional[str] = None, year: Optional[int] = None) -> List[Dict[str, Any]]:
+        # Fetch master timetable with optional term and year filters
+        query = "SELECT * FROM vw_master_timetable"
+        params = []
+        conditions = []
+        if term:
+            conditions.append("term = ?")
+            params.append(term)
+        if year:
+            conditions.append("academic_year = ?")
+            params.append(year)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY day_of_week, start_time"
+        return self.db.fetch_all(query, tuple(params))
+

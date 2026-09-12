@@ -242,7 +242,44 @@ CREATE TABLE IF NOT EXISTS student_degrees (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -------------------------------------------------------------
--- 13. Optimization Indexes
+-- 13. Classrooms Table
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS classrooms (
+    room_id INT AUTO_INCREMENT PRIMARY KEY,
+    building VARCHAR(100) NOT NULL,
+    room_number VARCHAR(30) NOT NULL,
+    seating_capacity INT NOT NULL DEFAULT 35,
+    room_type ENUM('lecture_hall', 'computer_lab', 'seminar_room', 'laboratory') NOT NULL DEFAULT 'lecture_hall',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_building_room
+        UNIQUE (building, room_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -------------------------------------------------------------
+-- 14. Section Schedules Table
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS section_schedules (
+    schedule_id INT AUTO_INCREMENT PRIMARY KEY,
+    section_id INT NOT NULL,
+    room_id INT NOT NULL,
+    day_of_week ENUM('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT') NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sched_section
+        FOREIGN KEY (section_id)
+        REFERENCES course_sections (section_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_sched_room
+        FOREIGN KEY (room_id)
+        REFERENCES classrooms (room_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -------------------------------------------------------------
+-- 15. Optimization Indexes
 -- -------------------------------------------------------------
 CREATE INDEX idx_student_status ON students (status);
 CREATE INDEX idx_student_gpa ON students (cumulative_gpa);
@@ -254,4 +291,8 @@ CREATE INDEX idx_prereq_course ON course_prerequisites (course_id);
 CREATE INDEX idx_degree_dept ON degree_programs (department_id);
 CREATE INDEX idx_req_degree ON degree_requirements (degree_id);
 CREATE INDEX idx_std_degree ON student_degrees (student_id, status);
+CREATE INDEX idx_classroom_building ON classrooms (building, room_number);
+CREATE INDEX idx_schedule_room_time ON section_schedules (room_id, day_of_week, start_time, end_time);
+CREATE INDEX idx_schedule_section ON section_schedules (section_id);
+
 

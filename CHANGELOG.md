@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-09-12
+
+### Added
+- **Classroom Scheduling & Conflict Detector Schema** (`sql/01_schema.sql`):
+  - `classrooms`: Physical facilities catalog with building, room number, seating capacity, and room types (`lecture_hall`, `computer_lab`, `seminar_room`, `laboratory`).
+  - `section_schedules`: Time-block allocations linking course sections to classrooms across day-of-week slots and start/end time intervals.
+- **Analytical Timetable & Workload Views** (`sql/03_views.sql`):
+  - `vw_classroom_utilization`: Room capacity metrics, active section counts, total seated students, and weekly utilization hours.
+  - `vw_faculty_workload`: Professor workload reporting tracking teaching credits, sections taught, contact hours, and categorization (`Light`, `Standard`, `Full`, `Overload`).
+  - `vw_master_timetable`: Comprehensive timetable mapping section times, rooms, professors, and current enrollments.
+- **Academic Service & Conflict Guards** (`src/school_db/service.py`):
+  - `schedule_section`: Enforces dual scheduling conflict guards preventing classroom double-booking and professor simultaneous instruction overlap.
+  - Seating capacity validation preventing section registration from exceeding room limits.
+  - Query methods `get_classroom_utilization`, `get_faculty_workload`, and `get_master_timetable`.
+- **Command-Line Interface Enhancements** (`src/school_db/cli.py`):
+  - Added `rooms` subcommand to view classroom inventory and utilization.
+  - Added `workload` subcommand to analyze professor teaching distribution.
+  - Added `timetable` subcommand with optional `--term` and `--year` filters.
+  - Added `schedule` subcommand to allocate section time blocks with active conflict verification.
+- **Automated Verification Suite** (`tests/test_scheduling_conflicts.py`, `tests/test_cli.py`):
+  - Added 11 unit, integration, and CLI tests verifying classroom double-booking rejection, professor overlap blocking, capacity ceilings, and schedule resolution. Total test suite expanded to 41 passing tests.
+
 ## [1.1.0] - 2026-09-12
 
 ### Added

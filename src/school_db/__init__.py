@@ -3,6 +3,6 @@
 
 """School Management System - Production MySQL Relational Database Package."""
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 __author__ = "BreakingTheBot"
 __license__ = "MIT"

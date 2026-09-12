@@ -14,7 +14,7 @@ def test_cli_version(capsys):
         except SystemExit:
             pass
     captured = capsys.readouterr()
-    assert "mysql-school 1.0.0" in captured.out
+    assert "mysql-school 1.2.0" in captured.out
 
 
 def test_cli_verify(capsys):
@@ -23,8 +23,8 @@ def test_cli_verify(capsys):
         main()
     captured = capsys.readouterr()
     assert "SCHEMA INTEGRITY VERIFICATION: PASS" in captured.out
-    assert "Tables Found (12)" in captured.out
-    assert "Views Found (6)" in captured.out
+    assert "Tables Found (14)" in captured.out
+    assert "Views Found (9)" in captured.out
 
 
 def test_cli_info(capsys):
@@ -71,3 +71,57 @@ def test_cli_export_sql(capsys, tmp_path):
         main()
     captured = capsys.readouterr()
     assert "Consolidated deployment SQL exported" in captured.out
+
+
+def test_cli_rooms(capsys):
+    # Verify CLI rooms subcommand displays classroom utilization
+    with patch.object(sys, "argv", ["mysql-school", "--in-memory", "rooms"]):
+        main()
+    captured = capsys.readouterr()
+    assert "CLASSROOM CAPACITY & UTILIZATION" in captured.out
+    assert "Turing Hall" in captured.out
+
+
+def test_cli_workload(capsys):
+    # Verify CLI workload subcommand displays professor workload
+    with patch.object(sys, "argv", ["mysql-school", "--in-memory", "workload"]):
+        main()
+    captured = capsys.readouterr()
+    assert "FACULTY TEACHING WORKLOAD" in captured.out
+    assert "Alan Turing" in captured.out
+
+
+def test_cli_timetable(capsys):
+    # Verify CLI timetable subcommand displays scheduled sections
+    with patch.object(sys, "argv", ["mysql-school", "--in-memory", "timetable", "--term", "Fall"]):
+        main()
+    captured = capsys.readouterr()
+    assert "MASTER CLASSROOM TIMETABLE" in captured.out
+    assert "CS-101" in captured.out
+
+
+def test_cli_schedule_success(capsys):
+    # Verify CLI schedule subcommand successfully schedules a section
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "mysql-school",
+            "--in-memory",
+            "schedule",
+            "--section",
+            "4",
+            "--room",
+            "3",
+            "--day",
+            "FRI",
+            "--start",
+            "14:00:00",
+            "--end",
+            "16:00:00",
+        ],
+    ):
+        main()
+    captured = capsys.readouterr()
+    assert "Scheduling Assignment Succeeded" in captured.out
+    assert "FRI 14:00:00 to 16:00:00" in captured.out
